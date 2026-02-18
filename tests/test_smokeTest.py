@@ -22,7 +22,7 @@ class TestSmokeTest():
     self.driver.quit()
   
   def test_test1HomePageVerification(self):
-    self.driver.get("http://127.0.0.1:5500/")
+    self.driver.get("http://127.0.0.1:5000/")
     self.driver.set_window_size(550, 692)
     elements = self.driver.find_elements(By.CSS_SELECTOR, ".header-logo img")
     assert len(elements) > 0
@@ -30,7 +30,7 @@ class TestSmokeTest():
     assert self.driver.title == "Teton Idaho CoC"
   
   def test_test2HomePageFeatures(self):
-    self.driver.get("http://127.0.0.1:5500/")
+    self.driver.get("http://127.0.0.1:5000/")
     elements = self.driver.find_elements(By.CSS_SELECTOR, "div.spotlight1")
     assert len(elements) > 0
     elements = self.driver.find_elements(By.CSS_SELECTOR, "div.spotlight2")
@@ -45,7 +45,7 @@ class TestSmokeTest():
     assert len(elements) > 0
   
   def test_test3DirectoryGridandListFeature(self):
-    self.driver.get("http://127.0.0.1:5500/directory.html")
+    self.driver.get("http://127.0.0.1:5000/directory.html")
     self.driver.set_window_size(1200, 800)
     self.driver.find_element(By.CSS_SELECTOR, "button#directory-grid").click()
     WebDriverWait(self.driver, 5).until(expected_conditions.visibility_of_element_located((By.CSS_SELECTOR, "section.gold-member")))
@@ -57,7 +57,7 @@ class TestSmokeTest():
     assert len(elements) > 0
   
   def test_test4JoinPageDataEntry(self):
-    self.driver.get("http://127.0.0.1:5500/join.html")
+    self.driver.get("http://127.0.0.1:5000/join.html")
     self.driver.set_window_size(1200, 800)
     
     # Verify First Name field exists (meets rubric requirement)
@@ -77,11 +77,9 @@ class TestSmokeTest():
     # Verify we are on the next page (any input exists)
     next_page_inputs = self.driver.find_elements(By.TAG_NAME, "input")
     assert len(next_page_inputs) > 0
-    
-    # Test passes - we successfully clicked Next and landed on another page
   
   def test_test5AdminPageLogin(self):
-    self.driver.get("http://127.0.0.1:5500/admin.html")
+    self.driver.get("http://127.0.0.1:5000/admin.html")
     self.driver.set_window_size(1200, 800)
     elements = self.driver.find_elements(By.ID, "username")
     assert len(elements) > 0
