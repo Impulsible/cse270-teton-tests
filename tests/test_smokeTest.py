@@ -22,7 +22,7 @@ class TestSmokeTest():
     self.driver.quit()
   
   def test_test1HomePageVerification(self):
-    self.driver.get("http://127.0.0.1:5000/")
+    self.driver.get("http://127.0.0.1:5500/cse270/teton/1.6/")
     self.driver.set_window_size(550, 692)
     elements = self.driver.find_elements(By.CSS_SELECTOR, ".header-logo img")
     assert len(elements) > 0
@@ -30,7 +30,7 @@ class TestSmokeTest():
     assert self.driver.title == "Teton Idaho CoC"
   
   def test_test2HomePageFeatures(self):
-    self.driver.get("http://127.0.0.1:5000/")
+    self.driver.get("http://127.0.0.1:5500/cse270/teton/1.6/")
     elements = self.driver.find_elements(By.CSS_SELECTOR, "div.spotlight1")
     assert len(elements) > 0
     elements = self.driver.find_elements(By.CSS_SELECTOR, "div.spotlight2")
@@ -45,7 +45,7 @@ class TestSmokeTest():
     assert len(elements) > 0
   
   def test_test3DirectoryGridandListFeature(self):
-    self.driver.get("http://127.0.0.1:5000/directory.html")
+    self.driver.get("http://127.0.0.1:5500/cse270/teton/1.6/directory.html")
     self.driver.set_window_size(1200, 800)
     self.driver.find_element(By.CSS_SELECTOR, "button#directory-grid").click()
     WebDriverWait(self.driver, 5).until(expected_conditions.visibility_of_element_located((By.CSS_SELECTOR, "section.gold-member")))
@@ -57,44 +57,38 @@ class TestSmokeTest():
     assert len(elements) > 0
   
   def test_test4JoinPageDataEntry(self):
-    self.driver.get("http://127.0.0.1:5000/join.html")
+    self.driver.get("http://127.0.0.1:5500/cse270/teton/1.6/join.html")
     self.driver.set_window_size(1200, 800)
     
-    # Verify First Name field exists (meets rubric requirement)
+    # Verify First Name field exists
     elements = self.driver.find_elements(By.CSS_SELECTOR, "input[name=\"fname\"]")
     assert len(elements) > 0
     
-    # Fill first page with information (meets rubric requirement)
+    # Fill first page fields
     self.driver.execute_script("document.getElementsByName('fname')[0].value='John';")
     self.driver.execute_script("document.getElementsByName('lname')[0].value='Doe';")
     
-    # Click Next Step button (meets rubric requirement)
+    # Click Next Step
     self.driver.find_element(By.CSS_SELECTOR, "input[value=\"Next Step\"]").click()
     
-    # Wait for next page to load
+    # Wait for next page
     time.sleep(2)
-    
-    # Verify we are on the next page (any input exists)
     next_page_inputs = self.driver.find_elements(By.TAG_NAME, "input")
     assert len(next_page_inputs) > 0
   
   def test_test5AdminPageLogin(self):
-    self.driver.get("http://127.0.0.1:5000/admin.html")
+    self.driver.get("http://127.0.0.1:5500/cse270/teton/1.6/admin.html")
     self.driver.set_window_size(1200, 800)
     elements = self.driver.find_elements(By.ID, "username")
     assert len(elements) > 0
-    # Fill username using JavaScript
     self.driver.execute_script("document.getElementById('username').value='wronguser';")
     
     elements = self.driver.find_elements(By.CSS_SELECTOR, "input[name=\"password\"]")
     assert len(elements) > 0
-    # Fill password using JavaScript
     self.driver.execute_script("document.getElementsByName('password')[0].value='wrongpass';")
     
-    # Click login using JavaScript
     self.driver.execute_script("document.querySelector('.mysubmit').click();")
     
-    # Wait for error message
     WebDriverWait(self.driver, 5).until(expected_conditions.visibility_of_element_located((By.XPATH, "//*[contains(text(),'Invalid')]")))
     elements = self.driver.find_elements(By.XPATH, "//*[contains(text(),'Invalid')]")
     assert len(elements) > 0
