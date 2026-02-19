@@ -2,21 +2,15 @@
 name: Simple CI/CD Pipeline for CSE 270
 
 on:
-  # Runs on pushes targeting the default branch
   push:
     branches: ["main"]
-
-  # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
-# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
 permissions:
   contents: read
   pages: write
   id-token: write
 
-# Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
-# However, do NOT cancel in-progress runs as we want to allow these production deployments to complete.
 concurrency:
   group: "pages"
   cancel-in-progress: false
@@ -25,62 +19,54 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout the latest code
-      uses: actions/checkout@v4.1.2
-    
-    - name: Set up Python 3.12
-      uses: actions/setup-python@v5.0.0
-      with:
-        python-version: "3.12"
-    
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install flake8 pytest requests pytest-mock selenium requests-mock coverage
-    
-    - name: Debug - Show directory structure
-      run: |
-        pwd
-        ls -la
-        echo "=== Looking for website files ==="
-        find . -name "*.html" | head -20
-    
-    - name: Start HTTP server
-      run: |
-        # Navigate to the website directory
-        cd cse270/teton/1.6
-        echo "Starting server from: $(pwd)"
-        ls -la
-        
-        # Start Python HTTP server in background
-        python -m http.server 5500 &
-        SERVER_PID=$!
-        echo "Server started with PID: $SERVER_PID"
-        
-        # Wait for server to start
-        sleep 5
-        
-        # Test server connection
-        curl -I http://127.0.0.1:5500
-        
-        # Go back to root
-        cd ../../../..
-    
-    - name: Run tests
-      run: |
-        cd tests
-        python -m pytest -v
-    
-    - name: Kill server
-      if: always()
-      run: |
-        kill $(lsof -t -i:5500) || echo "No server to kill"
+      - name: Checkout the latest code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.10 (matches your tests environment)
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest selenium
+
+      - name: Debug - Show directory structure
+        run: |
+          pwd
+          ls -la
+          echo "=== Website folder check ==="
+          ls -la cse270/teton/1.6 || true
+          echo "=== Tests folder check ==="
+          ls -la tests || true
+
+      # IMPORTANT:
+      # Serve REPO ROOT on port 5500 so URLs like:
+      # http://127.0.0.1:5500/cse270/teton/1.6/
+      # work exactly as written in your Selenium tests.
+      - name: Start HTTP server (repo root on port 5500)
+        run: |
+          python -m http.server 5500 --bind 127.0.0.1 &
+          for i in {1..30}; do
+            curl -sSf http://127.0.0.1:5500/cse270/teton/1.6/ >/dev/null && break
+            sleep 0.5
+          done
+
+      - name: Run tests
+        run: |
+          cd tests
+          pytest -q -s
+
+      - name: Kill server
+        if: always()
+        run: |
+          pkill -f "http.server 5500" || true
 
   analyze:
     needs: build
-    name: Analyze
-    runs-on: ${{ (matrix.language == 'swift' && 'macos-latest') || 'ubuntu-latest' }}
-    timeout-minutes: ${{ (matrix.language == 'swift' && 120) || 360 }}
+    name: Analyze (CodeQL)
+    runs-on: ubuntu-latest
     permissions:
       actions: read
       contents: read
@@ -89,24 +75,24 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        language: [ 'javascript']
-  
+        language: ['javascript']
+
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4.1.2
-  
-    - name: Initialize CodeQL
-      uses: github/codeql-action/init@v3
-      with:
-        languages: ${{ matrix.language }}
-  
-    - name: Autobuild
-      uses: github/codeql-action/autobuild@v3
-  
-    - name: Perform CodeQL Analysis
-      uses: github/codeql-action/analyze@v3
-      with:
-        category: "/language:${{matrix.language}}"
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:${{ matrix.language }}"
 
   deploy:
     needs: analyze
@@ -114,16 +100,20 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout
-        uses: actions/checkout@v4.1.2
+        uses: actions/checkout@v4
+
       - name: Setup Pages
-        uses: actions/configure-pages@v4.0.0
+        uses: actions/configure-pages@v5
+
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3.0.1
+        uses: actions/upload-pages-artifact@v3
         with:
           # Upload only teton/1.6
-          path: 'cse270/teton/1.6'
+          path: "cse270/teton/1.6"
+
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4.0.5
+        uses: actions/deploy-pages@v4
