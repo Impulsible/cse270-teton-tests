@@ -1,0 +1,12 @@
+﻿# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Selenium logs
+geckodriver.log
+*.log
+
+# VS Code
+.vscode/
