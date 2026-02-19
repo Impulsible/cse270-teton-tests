@@ -9,6 +9,9 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    container:
+      image: selenium/standalone-chrome:latest
+      options: --user root
     
     steps:
     - uses: actions/checkout@v4
@@ -23,15 +26,11 @@ jobs:
         python -m pip install --upgrade pip
         pip install pytest selenium
         
-    - name: Setup Chrome and ChromeDriver
-      uses: nanasess/setup-chromedriver@v2
-      with:
-        chromedriver-version: 'latest'
-    
     - name: Verify installations
       run: |
         google-chrome --version
         chromedriver --version
+        python --version
         
     - name: Startup HTTP Server
       run: |
