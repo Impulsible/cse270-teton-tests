@@ -9,40 +9,50 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    container:
-      image: selenium/standalone-chrome:latest
-      options: --user root
     
     steps:
     - uses: actions/checkout@v4
     
-    - name: Install Python and pytest
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+    
+    - name: Install dependencies
       run: |
-        apt-get update
-        apt-get install -y python3 python3-pip
-        python3 -m pip install --upgrade pip
-        pip3 install pytest selenium
+        pip install pytest selenium
+        
+    - name: Install Chrome
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y google-chrome-stable
+        
+    - name: Install ChromeDriver
+      run: |
+        sudo apt-get install -y unzip
+        CHROME_VERSION=$(google-chrome --version | awk '{print $3}')
+        echo "Chrome version: $CHROME_VERSION"
+        # Use Chrome for Testing
+        wget -q https://storage.googleapis.com/chrome-for-testing-public/latest/linux64/chromedriver-linux64.zip
+        unzip chromedriver-linux64.zip
+        sudo mv chromedriver-linux64/chromedriver /usr/local/bin/
+        chmod +x /usr/local/bin/chromedriver
         
     - name: Verify installations
       run: |
         google-chrome --version
         chromedriver --version
-        python3 --version
-        pip3 list | grep pytest
         
-    - name: Startup HTTP Server
+    - name: Start HTTP Server
       run: |
-        python3 -m http.server 5500 &
+        python -m http.server 5500 &
         sleep 5
+        
+    - name: Test server connection
+      run: |
+        curl -I http://localhost:5500/cse270/teton/1.6/
+        wget -qO- http://localhost:5500/cse270/teton/1.6/ | head -20
         
     - name: Run tests
       run: |
-        python3 -m pytest tests/test_smokeTest.py -v -s
-        
-    - name: Upload test results (on failure)
-      if: failure()
-      uses: actions/upload-artifact@v4
-      with:
-        name: test-results
-        path: |
-          *.log
+        python -m pytest tests/test_smokeTest.py -v -s
