@@ -1,58 +1,60 @@
-name: Run Smoke Tests (Firefox)
+name: CI Pipeline with Smoke Tests
 
 on:
   push:
     branches: [ main ]
   pull_request:
     branches: [ main ]
-  workflow_dispatch:
 
 jobs:
   test:
     runs-on: ubuntu-latest
-
+    
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.10"
-
-      - name: Install Firefox
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y firefox
-
-      - name: Install Geckodriver
-        run: |
-          sudo apt-get install -y firefox-geckodriver || sudo apt-get install -y geckodriver
-          geckodriver --version
-
-      - name: Install Python dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install pytest selenium
-
-      - name: Debug folder structure
-        run: |
-          pwd
-          ls -la
-          ls -la cse270/teton/1.6
-
-      - name: Start HTTP server (repo root on port 5500)
-        run: |
-          python -m http.server 5500 --bind 127.0.0.1 --directory . > server.log 2>&1 &
-          sleep 2
-          curl -I http://127.0.0.1:5500/cse270/teton/1.6/ || true
-
-      - name: Run tests
-        run: |
-          cd tests
-          pytest -vv -s
-
-      - name: Kill server
-        if: always()
-        run: |
-          pkill -f "http.server 5500" || true
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pytest selenium
+        
+    - name: Install Firefox and Geckodriver
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y firefox
+        # Download and install geckodriver manually
+        wget https://github.com/mozilla/geckodriver/releases/download/v0.33.0/geckodriver-v0.33.0-linux64.tar.gz
+        tar -xzf geckodriver-v0.33.0-linux64.tar.gz
+        chmod +x geckodriver
+        sudo mv geckodriver /usr/local/bin/
+        
+    - name: Verify installations
+      run: |
+        firefox --version
+        geckodriver --version
+        python --version
+        pip list | grep selenium
+        
+    - name: Startup HTTP Server for pipeline tests
+      uses: Eun/http-server-action@v1.0.11
+      with:
+        directory: .
+        port: 5500
+        
+    - name: Run tests
+      run: |
+        python -m pytest tests/test_smokeTest.py -v
+        
+    - name: Upload test results (on failure)
+      if: failure()
+      uses: actions/upload-artifact@v3
+      with:
+        name: test-results
+        path: |
+          tests/geckodriver.log
+          *.log
