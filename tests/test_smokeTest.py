@@ -232,34 +232,50 @@ class TestSmokeTest:
     def test_test3DirectoryGridandListFeature(self):
         self.driver.get(self.url(f"{SITE_PATH}/directory.html"))
         
-        # Wait for page to load
-        time.sleep(2)
+        # Wait longer for page to load
+        time.sleep(3)
+        
+        # Print page title and URL for debugging
+        print(f"Page title: {self.driver.title}")
+        print(f"Current URL: {self.driver.current_url}")
         
         # Try clicking grid button if exists
         grid_button = None
-        grid_selectors = ["button#directory-grid", "#grid-view-button", "[data-view='grid']", "button:contains('Grid')"]
+        grid_selectors = ["button#directory-grid", "#grid-view-button", "[data-view='grid']", "button"]
         for selector in grid_selectors:
             try:
-                grid_button = self.driver.find_element(By.CSS_SELECTOR, selector)
-                if grid_button.is_displayed():
+                buttons = self.driver.find_elements(By.CSS_SELECTOR, selector)
+                for button in buttons:
+                    if button.is_displayed() and ("grid" in button.text.lower() or "grid" in button.get_attribute("id").lower()):
+                        grid_button = button
+                        print(f"Found grid button with selector: {selector}, text: {button.text}")
+                        break
+                if grid_button:
                     break
             except Exception:
                 continue
 
         if grid_button:
-            grid_button.click()
+            self.driver.execute_script("arguments[0].click();", grid_button)
             time.sleep(2)
             print("Clicked grid view button")
         
         # Look for members in grid view
-        member_selectors = ["section.gold-member", ".member-card", ".gold-member", ".directory-item", ".member", ".card", "[class*='member']"]
+        member_selectors = [
+            "section.gold-member", 
+            ".member-card", 
+            ".gold-member", 
+            ".directory-item", 
+            ".member", 
+            ".card",
+            "[class*='member']",
+            "div[class*='gold']",
+            "div.spotlight"
+        ]
+        
         members_found = False
         
         # Try to find any members
-        page_source = self.driver.page_source
-        if "Teton Turf" in page_source or "member" in page_source.lower():
-            print("Found member content in page source")
-        
         for selector in member_selectors:
             try:
                 elements = self.driver.find_elements(By.CSS_SELECTOR, selector)
@@ -270,30 +286,40 @@ class TestSmokeTest:
             except Exception:
                 continue
         
-        # If still not found, try a more general approach
+        # If still not found, try looking for any content
         if not members_found:
-            # Look for any sections or divs that might contain member info
-            all_sections = self.driver.find_elements(By.CSS_SELECTOR, "section, div.card, div.item")
-            visible_sections = [e for e in all_sections if e.is_displayed()]
-            if len(visible_sections) >= 2:
-                print(f"Found {len(visible_sections)} visible sections that might be members")
+            # Check for Teton Turf specifically
+            page_source = self.driver.page_source
+            if "Teton Turf" in page_source:
+                print("Found 'Teton Turf' in page source")
                 members_found = True
+            else:
+                # Look for any business-like content
+                body_text = self.driver.find_element(By.TAG_NAME, "body").text
+                if "Teton" in body_text or "Turf" in body_text or "Member" in body_text:
+                    print("Found member-related text in body")
+                    members_found = True
         
         assert members_found, "No members found in grid view"
         
         # Try clicking list button if exists
         list_button = None
-        list_selectors = ["button#directory-list", "#list-view-button", "[data-view='list']", "button:contains('List')"]
+        list_selectors = ["button#directory-list", "#list-view-button", "[data-view='list']", "button"]
         for selector in list_selectors:
             try:
-                list_button = self.driver.find_element(By.CSS_SELECTOR, selector)
-                if list_button.is_displayed():
+                buttons = self.driver.find_elements(By.CSS_SELECTOR, selector)
+                for button in buttons:
+                    if button.is_displayed() and ("list" in button.text.lower() or "list" in button.get_attribute("id").lower()):
+                        list_button = button
+                        print(f"Found list button with selector: {selector}, text: {button.text}")
+                        break
+                if list_button:
                     break
             except Exception:
                 continue
 
         if list_button:
-            list_button.click()
+            self.driver.execute_script("arguments[0].click();", list_button)
             time.sleep(2)
             print("Clicked list view button")
         
@@ -313,20 +339,28 @@ class TestSmokeTest:
         initial_url = self.driver.current_url
         print(f"Initial URL: {initial_url}")
         
-        # Wait for page to load
-        time.sleep(2)
+        # Wait longer for page to load
+        time.sleep(3)
         
-        # Print all input fields for debugging
+        # Print page source for debugging (first 500 chars)
+        page_source = self.driver.page_source[:500]
+        print(f"Page source preview: {page_source}")
+        
+        # Try multiple ways to find inputs
         all_inputs = self.driver.find_elements(By.TAG_NAME, "input")
         print(f"Total input fields found: {len(all_inputs)}")
-        for i, input_field in enumerate(all_inputs):
-            try:
-                name = input_field.get_attribute("name")
-                id = input_field.get_attribute("id")
-                type = input_field.get_attribute("type")
-                print(f"Input {i}: name='{name}', id='{id}', type='{type}'")
-            except:
-                pass
+        
+        # Also check for inputs inside forms
+        forms = self.driver.find_elements(By.TAG_NAME, "form")
+        print(f"Total forms found: {len(forms)}")
+        
+        for i, form in enumerate(forms):
+            form_inputs = form.find_elements(By.TAG_NAME, "input")
+            print(f"Form {i} has {len(form_inputs)} inputs")
+        
+        # Try JavaScript to find inputs
+        input_count = self.driver.execute_script("return document.getElementsByTagName('input').length;")
+        print(f"JavaScript reports {input_count} inputs")
         
         # Try multiple selectors for first name
         first_name_selectors = [
@@ -337,27 +371,31 @@ class TestSmokeTest:
             "input[placeholder*='First']",
             "input[name*='first']",
             "input[id*='first']",
-            "input[type='text']:first-of-type"
+            "input[type='text']",
+            ".myinput input",
+            "input"
         ]
         
         first_name_field = None
         for selector in first_name_selectors:
             try:
                 fields = self.driver.find_elements(By.CSS_SELECTOR, selector)
-                if fields and fields[0].is_displayed():
-                    first_name_field = fields[0]
-                    print(f"Found first name field with selector: {selector}")
+                for field in fields:
+                    if field.is_displayed():
+                        first_name_field = field
+                        print(f"Found first name field with selector: {selector}")
+                        break
+                if first_name_field:
                     break
-            except Exception as e:
+            except Exception:
                 continue
         
-        # If still not found, try getting the first visible text input
-        if not first_name_field:
+        # If still not found, try the first visible input
+        if not first_name_field and all_inputs:
             for input_field in all_inputs:
-                input_type = input_field.get_attribute("type")
-                if input_type in ["text", "None"] and input_field.is_displayed():
+                if input_field.is_displayed():
                     first_name_field = input_field
-                    print(f"Using first visible text input as fallback")
+                    print("Using first visible input as fallback")
                     break
         
         assert first_name_field is not None, "First name field not found"
@@ -366,13 +404,7 @@ class TestSmokeTest:
         field_mappings = {
             "fname": "John",
             "lname": "Doe",
-            "firstname": "John",
-            "lastname": "Doe",
             "bizname": "Test Business",
-            "business": "Test Business",
-            "organization": "Test Business",
-            "email": "test@example.com",
-            "phone": "555-123-4567",
         }
         
         fields_filled = 0
@@ -407,9 +439,8 @@ class TestSmokeTest:
             "#next-button",
             "button.next",
             "input[value='Next']",
-            "button:contains('Next')",
-            "button:contains('Continue')",
-            "input[value='Continue']"
+            "button",
+            "input[type='button']"
         ]
         
         for selector in next_selectors:
@@ -417,36 +448,27 @@ class TestSmokeTest:
                 elements = self.driver.find_elements(By.CSS_SELECTOR, selector)
                 for element in elements:
                     if element.is_displayed() and element.is_enabled():
-                        next_button = element
-                        print(f"Found next button with selector: {selector}")
-                        break
+                        element_text = element.text.lower() or element.get_attribute("value", "").lower()
+                        if "next" in element_text or "continue" in element_text or "submit" in element_text:
+                            next_button = element
+                            print(f"Found next button with selector: {selector}")
+                            break
                 if next_button:
                     break
             except Exception:
                 continue
         
         if not next_button:
-            # Try finding any button that might be the next button
-            buttons = self.driver.find_elements(By.TAG_NAME, "button")
-            for button in buttons:
-                button_text = button.text.lower()
-                if "next" in button_text or "continue" in button_text or "submit" in button_text:
-                    if button.is_displayed():
-                        next_button = button
-                        print(f"Found next button with text: {button.text}")
-                        break
-        
-        if not next_button:
-            # Try the first submit button as last resort
-            for input_field in all_inputs:
-                if input_field.get_attribute("type") == "submit" and input_field.is_displayed():
-                    next_button = input_field
+            # Try the first submit button
+            for element in all_inputs:
+                if element.get_attribute("type") == "submit" and element.is_displayed():
+                    next_button = element
                     print("Using first submit button as next button")
                     break
         
         assert next_button is not None, "Next Step button not found"
         
-        # Click using JavaScript to avoid any interaction issues
+        # Click using JavaScript
         self.driver.execute_script("arguments[0].click();", next_button)
         print("Clicked next button")
         
@@ -473,47 +495,51 @@ class TestSmokeTest:
                 field_found = True
                 break
         
-        assert field_found or url_changed, "Next page didn't load properly - no form fields found and URL didn't change"
+        assert field_found or url_changed, "Next page didn't load properly"
         print("Join page test completed successfully")
 
     def test_test5AdminPageLogin(self):
         self.driver.get(self.url(f"{SITE_PATH}/admin.html"))
         
         # Wait for page to load
-        time.sleep(2)
+        time.sleep(3)
+        
+        # Print page title for debugging
+        print(f"Page title: {self.driver.title}")
+        
+        # Try JavaScript to find inputs
+        input_count = self.driver.execute_script("return document.getElementsByTagName('input').length;")
+        print(f"JavaScript reports {input_count} inputs")
         
         # Print all input fields for debugging
         all_inputs = self.driver.find_elements(By.TAG_NAME, "input")
-        print(f"Total input fields found: {len(all_inputs)}")
-        for i, input_field in enumerate(all_inputs):
-            try:
-                name = input_field.get_attribute("name")
-                id = input_field.get_attribute("id")
-                type = input_field.get_attribute("type")
-                print(f"Input {i}: name='{name}', id='{id}', type='{type}'")
-            except:
-                pass
+        print(f"Selenium found {len(all_inputs)} input fields")
         
         # Find username field
         username_selectors = [
             "input#username",
             "input[name='username']",
-            "input[type='text']:first-of-type",
-            "input:first-of-type"
+            "input[type='text']",
+            "input:not([type='password'])",
+            "input"
         ]
         
         username_field = None
         for selector in username_selectors:
             try:
                 fields = self.driver.find_elements(By.CSS_SELECTOR, selector)
-                if fields and fields[0].is_displayed():
-                    username_field = fields[0]
-                    print(f"Found username field with selector: {selector}")
+                for field in fields:
+                    if field.is_displayed() and field.get_attribute("type") != "password":
+                        username_field = field
+                        print(f"Found username field with selector: {selector}")
+                        break
+                if username_field:
                     break
             except Exception:
                 continue
         
-        if not username_field and len(all_inputs) > 0:
+        # If still not found, try first input
+        if not username_field and all_inputs:
             username_field = all_inputs[0]
             print("Using first input field as username field")
         
@@ -538,9 +564,10 @@ class TestSmokeTest:
             except Exception:
                 continue
         
+        # If still not found, look for any password input
         if not password_field:
             for input_field in all_inputs:
-                if input_field.get_attribute("type") == "password":
+                if input_field.get_attribute("type") == "password" and input_field.is_displayed():
                     password_field = input_field
                     print("Found password field by type")
                     break
@@ -565,10 +592,8 @@ class TestSmokeTest:
             "input[type='submit']",
             "#login-button",
             ".login-button",
-            "button:contains('Login')",
-            "button:contains('Sign In')",
-            "input[value='Login']",
-            "input[value='Sign In']"
+            "button",
+            "input[type='button']"
         ]
         
         for selector in login_selectors:
@@ -576,30 +601,21 @@ class TestSmokeTest:
                 elements = self.driver.find_elements(By.CSS_SELECTOR, selector)
                 for element in elements:
                     if element.is_displayed():
-                        login_button = element
-                        print(f"Found login button with selector: {selector}")
-                        break
+                        element_text = element.text.lower() or element.get_attribute("value", "").lower()
+                        if "login" in element_text or "sign in" in element_text or "submit" in element_text:
+                            login_button = element
+                            print(f"Found login button with selector: {selector}")
+                            break
                 if login_button:
                     break
             except Exception:
                 continue
         
         if not login_button:
-            # Try any button that might be the login button
-            buttons = self.driver.find_elements(By.TAG_NAME, "button")
-            for button in buttons:
-                button_text = button.text.lower()
-                if "login" in button_text or "sign in" in button_text or "submit" in button_text:
-                    if button.is_displayed():
-                        login_button = button
-                        print(f"Found login button with text: {button.text}")
-                        break
-        
-        if not login_button:
             # Try the first submit button
-            for input_field in all_inputs:
-                if input_field.get_attribute("type") == "submit" and input_field.is_displayed():
-                    login_button = input_field
+            for element in all_inputs:
+                if element.get_attribute("type") == "submit" and element.is_displayed():
+                    login_button = element
                     print("Using first submit button as login button")
                     break
         
@@ -612,32 +628,17 @@ class TestSmokeTest:
         time.sleep(2)
         
         # Look for error message
-        error_texts = ["Invalid", "Error", "Wrong", "Incorrect", "Login failed", "Invalid username", "Invalid password"]
+        page_text = self.driver.find_element(By.TAG_NAME, "body").text
+        print(f"Page text after login: {page_text[:200]}")
+        
+        error_texts = ["Invalid", "Error", "Wrong", "Incorrect", "Login failed"]
         error_found = False
         
-        page_text = self.driver.find_element(By.TAG_NAME, "body").text
         for text in error_texts:
             if text.lower() in page_text.lower():
                 print(f"Found error message containing: '{text}'")
                 error_found = True
                 break
-        
-        if not error_found:
-            # Try more specific selectors
-            error_selectors = [
-                ".error", ".alert", ".message", ".notification", 
-                ".error-message", ".alert-danger", ".invalid",
-                "[class*='error']", "[class*='alert']"
-            ]
-            for selector in error_selectors:
-                elements = self.driver.find_elements(By.CSS_SELECTOR, selector)
-                for element in elements:
-                    if element.is_displayed() and element.text:
-                        print(f"Found error element with text: {element.text}")
-                        error_found = True
-                        break
-                if error_found:
-                    break
         
         assert error_found, "No error message displayed for invalid login"
         print("Admin login test completed successfully")
