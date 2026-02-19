@@ -23,31 +23,26 @@ jobs:
         python -m pip install --upgrade pip
         pip install pytest selenium
         
-    - name: Install Firefox (standard version)
+    - name: Install Chrome and ChromeDriver
       run: |
-        # Remove any existing Firefox (including snap)
-        sudo apt-get remove --purge firefox -y || true
-        sudo snap remove firefox || true
-        
-        # Add Mozilla team PPA for latest Firefox
-        sudo add-apt-repository ppa:mozillateam/ppa -y
+        # Install Chrome
+        wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
+        sudo sh -c 'echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google-chrome.list'
         sudo apt-get update
+        sudo apt-get install -y google-chrome-stable
         
-        # Install Firefox from Mozilla repository
-        sudo apt-get install -y firefox
-        
-        # Download and install geckodriver
-        wget https://github.com/mozilla/geckodriver/releases/download/v0.33.0/geckodriver-v0.33.0-linux64.tar.gz
-        tar -xzf geckodriver-v0.33.0-linux64.tar.gz
-        chmod +x geckodriver
-        sudo mv geckodriver /usr/local/bin/
+        # Install ChromeDriver
+        sudo apt-get install -y unzip
+        CHROME_VERSION=$(google-chrome --version | cut -d ' ' -f 3 | cut -d '.' -f 1)
+        CHROMEDRIVER_VERSION=$(curl -s "https://chromedriver.storage.googleapis.com/LATEST_RELEASE_$CHROME_VERSION")
+        wget -q "https://chromedriver.storage.googleapis.com/$CHROMEDRIVER_VERSION/chromedriver_linux64.zip"
+        unzip chromedriver_linux64.zip
+        sudo mv chromedriver /usr/local/bin/
         
     - name: Verify installations
       run: |
-        echo "Firefox location: $(which firefox)"
-        firefox --version
-        echo "Geckodriver location: $(which geckodriver)"
-        geckodriver --version
+        google-chrome --version
+        chromedriver --version
         
     - name: Startup HTTP Server
       run: |
@@ -64,6 +59,4 @@ jobs:
       with:
         name: test-results
         path: |
-          geckodriver.log
-          tests/geckodriver.log
           *.log
