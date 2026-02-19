@@ -16,30 +16,28 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.10'
-    
-    - name: Install dependencies
+    - name: Install Python and pytest
       run: |
-        python -m pip install --upgrade pip
-        pip install pytest selenium
+        apt-get update
+        apt-get install -y python3 python3-pip
+        python3 -m pip install --upgrade pip
+        pip3 install pytest selenium
         
     - name: Verify installations
       run: |
         google-chrome --version
         chromedriver --version
-        python --version
+        python3 --version
+        pip3 list | grep pytest
         
     - name: Startup HTTP Server
       run: |
-        python -m http.server 5500 &
+        python3 -m http.server 5500 &
         sleep 5
         
     - name: Run tests
       run: |
-        python -m pytest tests/test_smokeTest.py -v -s
+        python3 -m pytest tests/test_smokeTest.py -v -s
         
     - name: Upload test results (on failure)
       if: failure()
