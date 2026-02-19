@@ -566,13 +566,4 @@ class TestSmokeTest:
                     break
 
         assert error_found, "No error message displayed for invalid login"
-        print("Admin login test completed successfully")# Navigate to your project
-cd C:\Users\DELL\Desktop\cse270-v16
-
-# Replace the test file
-notepad tests/test_smokeTest.py
-# Copy and paste the entire code above, save and close
-
-# Replace the workflow file
-notepad .github/workflows/main.yml
-# Copy and paste the entire workflow code above, save and close
+        print("Admin login test completed successfully")
