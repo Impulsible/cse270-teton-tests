@@ -1,3 +1,4 @@
+
 name: CI Pipeline with Smoke Tests
 
 on:
@@ -39,27 +40,29 @@ jobs:
         
     - name: Install matching ChromeDriver
       run: |
-        sudo apt-get install -y unzip
-        CHROME_MAJOR_VERSION=$(google-chrome --version | awk '{print $3}' | cut -d'.' -f1)
-        echo "Installing ChromeDriver for Chrome $CHROME_MAJOR_VERSION"
-        
+        sudo apt-get install -y unzip wget
         # Delete any existing ChromeDriver
         sudo rm -f /usr/local/bin/chromedriver
         
-        # Get the exact ChromeDriver version that matches Chrome
-        if [ "$CHROME_MAJOR_VERSION" = "144" ]; then
-          # Specific version for Chrome 144
-          CHROMEDRIVER_VERSION="144.0.7559.133"
-        else
-          # Try to get the matching version
-          CHROMEDRIVER_VERSION=$(curl -s "https://chromedriver.storage.googleapis.com/LATEST_RELEASE_$CHROME_MAJOR_VERSION")
-        fi
+        # Use Chrome for Testing (CfT) - works for all recent Chrome versions
+        echo "Downloading ChromeDriver from Chrome for Testing..."
         
-        echo "Downloading ChromeDriver version: $CHROMEDRIVER_VERSION"
-        wget -q "https://chromedriver.storage.googleapis.com/$CHROMEDRIVER_VERSION/chromedriver_linux64.zip"
-        unzip -q chromedriver_linux64.zip
-        sudo mv chromedriver /usr/local/bin/
-        sudo chmod +x /usr/local/bin/chromedriver
+        # Get the latest stable version
+        LATEST_VERSION=$(curl -s https://googlechromelabs.github.io/chrome-for-testing/last-known-good-versions.json | grep -o '"stable": "[^"]*"' | head -1 | cut -d'"' -f4)
+        echo "Latest stable Chrome version: $LATEST_VERSION"
+        
+        # Download ChromeDriver for Linux64
+        wget -q "https://storage.googleapis.com/chrome-for-testing-public/$LATEST_VERSION/linux64/chromedriver-linux64.zip"
+        
+        if [ -f chromedriver-linux64.zip ]; then
+          echo "Downloaded ChromeDriver version: $LATEST_VERSION"
+          unzip -q chromedriver-linux64.zip
+          sudo mv chromedriver-linux64/chromedriver /usr/local/bin/
+          sudo chmod +x /usr/local/bin/chromedriver
+        else
+          echo "Failed to download ChromeDriver"
+          exit 1
+        fi
         
     - name: Verify installations
       run: |
@@ -76,6 +79,7 @@ jobs:
     - name: Test server connection
       run: |
         curl -I http://localhost:5500/cse270/teton/1.6/ || echo "Server check failed"
+        echo "Server is running"
         
     - name: Run tests
       run: |
