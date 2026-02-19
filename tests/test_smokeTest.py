@@ -8,8 +8,8 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.wait import WebDriverWait
-from selenium.webdriver.firefox.options import Options as FirefoxOptions
-from selenium.webdriver.firefox.service import Service as FirefoxService
+from selenium.webdriver.chrome.options import Options as ChromeOptions
+from selenium.webdriver.chrome.service import Service as ChromeService
 
 
 # ---------- Config ----------
@@ -32,51 +32,24 @@ else:
     RUN_HEADLESS = False  # Show browser locally for debugging
 
 
-def find_geckodriver():
-    """Find geckodriver in common locations"""
-    # Check if in PATH
-    geckodriver_path = shutil.which("geckodriver")
-    if geckodriver_path:
-        print(f"Found geckodriver in PATH: {geckodriver_path}")
-        return geckodriver_path
-    
-    # Common Windows locations
-    common_paths = [
-        r"C:\Windows\geckodriver.exe",
-        r"C:\Program Files\geckodriver\geckodriver.exe",
-        os.path.expanduser("~/Downloads/geckodriver.exe"),
-        os.path.expanduser("~/geckodriver.exe"),
-        os.path.join(os.path.dirname(__file__), "geckodriver.exe"),
-        os.path.join(os.getcwd(), "geckodriver.exe"),
-    ]
-    
-    for path in common_paths:
-        if os.path.exists(path):
-            print(f"Found geckodriver at: {path}")
-            return path
-    
-    print("WARNING: geckodriver not found. Make sure it's in PATH or one of the common locations.")
-    return None
-
-
-def cleanup_firefox():
-    """Kill any existing Firefox processes that might interfere"""
+def cleanup_chrome():
+    """Kill any existing Chrome processes that might interfere"""
     system = platform.system()
     try:
         if system == "Windows":
-            result = subprocess.run(["taskkill", "/F", "/IM", "firefox.exe"], 
+            result = subprocess.run(["taskkill", "/F", "/IM", "chrome.exe"], 
                                    capture_output=True, text=True, timeout=5)
             if result.returncode == 0:
-                print("Killed existing Firefox processes")
+                print("Killed existing Chrome processes")
         elif system == "Darwin":  # macOS
-            subprocess.run(["pkill", "-f", "firefox"], capture_output=True, timeout=5)
+            subprocess.run(["pkill", "-f", "chrome"], capture_output=True, timeout=5)
         else:  # Linux
-            subprocess.run(["pkill", "-f", "firefox"], capture_output=True, timeout=5)
+            subprocess.run(["pkill", "-f", "chrome"], capture_output=True, timeout=5)
         time.sleep(2)
     except subprocess.TimeoutExpired:
         pass
     except Exception as e:
-        print(f"Error killing Firefox processes: {e}")
+        print(f"Error killing Chrome processes: {e}")
 
 
 # ---------- Pytest sanity check (fast failure if server isn't running) ----------
@@ -108,73 +81,45 @@ def test_server_is_reachable():
 
 class TestSmokeTest:
     def setup_method(self, method):
-        # Clean up any hanging Firefox processes
-        cleanup_firefox()
+        # Clean up any hanging Chrome processes
+        cleanup_chrome()
         
-        options = FirefoxOptions()
+        options = ChromeOptions()
         
-        # Firefox headless - always headless in CI
+        # Chrome headless - always headless in CI
         if RUN_HEADLESS or os.getenv("GITHUB_ACTIONS") == "true":
-            options.add_argument("-headless")
+            options.add_argument("--headless=new")
             print("Running in headless mode")
         else:
             print("Running in visible browser mode")
         
         # Add stability options for CI
-        options.set_preference("browser.startup.page", 0)
-        options.set_preference("browser.startup.homepage", "about:blank")
-        options.set_preference("browser.startup.homepage_override.mstone", "ignore")
-        options.set_preference("startup.homepage_welcome_url", "about:blank")
-        options.set_preference("browser.privatebrowsing.autostart", True)
-        options.set_preference("network.http.phishy-userpass-length", 255)
-        options.set_preference("security.csp.enable", False)
-        options.set_preference("app.update.auto", False)
-        options.set_preference("app.update.enabled", False)
-        options.set_preference("browser.search.update", False)
-        options.set_preference("dom.webnotifications.enabled", False)
-        options.set_preference("dom.push.enabled", False)
+        options.add_argument("--no-sandbox")
+        options.add_argument("--disable-dev-shm-usage")
+        options.add_argument("--disable-gpu")
+        options.add_argument("--window-size=1200,800")
+        options.add_argument("--disable-extensions")
+        options.add_argument("--disable-setuid-sandbox")
+        options.add_argument("--remote-debugging-port=9222")
         
-        # Simple service setup - avoid custom log file in CI
-        if os.getenv("GITHUB_ACTIONS") == "true":
-            # In CI, use simpler service without log file
-            service = FirefoxService()
-        else:
-            # Locally, use log file for debugging
-            log_path = os.path.join(os.path.dirname(__file__), "geckodriver.log")
-            geckodriver_path = find_geckodriver()
-            if geckodriver_path:
-                service = FirefoxService(
-                    executable_path=geckodriver_path,
-                    log_output=log_path,
-                    service_args=["--log", "error"]
-                )
-            else:
-                service = FirefoxService(
-                    log_output=log_path,
-                    service_args=["--log", "error"]
-                )
+        # Simple service setup
+        service = ChromeService()
         
-        # Retry logic for Firefox startup
+        # Retry logic for Chrome startup
         max_retries = 3
         for attempt in range(max_retries):
             try:
-                print(f"Starting Firefox (attempt {attempt + 1}/{max_retries})...")
-                self.driver = webdriver.Firefox(service=service, options=options)
-                print("Firefox started successfully")
+                print(f"Starting Chrome (attempt {attempt + 1}/{max_retries})...")
+                self.driver = webdriver.Chrome(service=service, options=options)
+                print("Chrome started successfully")
                 break
             except Exception as e:
-                print(f"Firefox startup attempt {attempt + 1} failed: {e}")
+                print(f"Chrome startup attempt {attempt + 1} failed: {e}")
                 if attempt == max_retries - 1:
                     # Print diagnostic info
                     print("\nDiagnostic information:")
-                    print(f"Firefox path: {shutil.which('firefox')}")
-                    print(f"Geckodriver path: {shutil.which('geckodriver')}")
-                    if os.getenv("GITHUB_ACTIONS") != "true" and os.path.exists(log_path):
-                        with open(log_path, 'r') as f:
-                            print("Last few lines of geckodriver.log:")
-                            lines = f.readlines()[-10:]
-                            for line in lines:
-                                print(f"  {line.strip()}")
+                    print(f"Chrome path: {shutil.which('chrome') or shutil.which('google-chrome')}")
+                    print(f"ChromeDriver path: {shutil.which('chromedriver')}")
                     raise
                 time.sleep(3)
         
@@ -198,7 +143,7 @@ class TestSmokeTest:
             finally:
                 # Small delay to ensure process cleanup
                 time.sleep(1)
-                cleanup_firefox()
+                cleanup_chrome()
 
     # Helper to build full URLs
     def url(self, relative):
