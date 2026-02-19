@@ -113,71 +113,46 @@ class TestSmokeTest:
         
         options = FirefoxOptions()
         
-        # Find Firefox binary
-        firefox_path = None
-        # Check common locations
-        common_firefox_paths = [
-            shutil.which("firefox"),
-            r"C:\Program Files\Mozilla Firefox\firefox.exe",
-            r"C:\Program Files (x86)\Mozilla Firefox\firefox.exe",
-            "/usr/bin/firefox",
-            "/usr/local/bin/firefox",
-        ]
-        
-        for path in common_firefox_paths:
-            if path and os.path.exists(path):
-                firefox_path = path
-                print(f"Found Firefox at: {firefox_path}")
-                break
-        
-        if firefox_path:
-            options.binary_location = firefox_path
-        else:
-            print("WARNING: Firefox binary not found. Will rely on system PATH.")
-        
-        # Firefox headless
-        if RUN_HEADLESS:
+        # Firefox headless - always headless in CI
+        if RUN_HEADLESS or os.getenv("GITHUB_ACTIONS") == "true":
             options.add_argument("-headless")
             print("Running in headless mode")
         else:
             print("Running in visible browser mode")
         
-        # Add stability options
+        # Add stability options for CI
         options.set_preference("browser.startup.page", 0)
         options.set_preference("browser.startup.homepage", "about:blank")
         options.set_preference("browser.startup.homepage_override.mstone", "ignore")
         options.set_preference("startup.homepage_welcome_url", "about:blank")
-        options.set_preference("startup.homepage_welcome_url.additional", "about:blank")
         options.set_preference("browser.privatebrowsing.autostart", True)
         options.set_preference("network.http.phishy-userpass-length", 255)
         options.set_preference("security.csp.enable", False)
-        
-        # Disable updates
         options.set_preference("app.update.auto", False)
         options.set_preference("app.update.enabled", False)
         options.set_preference("browser.search.update", False)
-        
-        # Disable annoying prompts
         options.set_preference("dom.webnotifications.enabled", False)
         options.set_preference("dom.push.enabled", False)
         
-        # Add logging to debug service issues
-        log_path = os.path.join(os.path.dirname(__file__), "geckodriver.log")
-        
-        # Find geckodriver
-        geckodriver_path = find_geckodriver()
-        if geckodriver_path:
-            service = FirefoxService(
-                executable_path=geckodriver_path,
-                log_output=log_path,
-                service_args=["--log", "error"]
-            )
+        # Simple service setup - avoid custom log file in CI
+        if os.getenv("GITHUB_ACTIONS") == "true":
+            # In CI, use simpler service without log file
+            service = FirefoxService()
         else:
-            # Try with default PATH
-            service = FirefoxService(
-                log_output=log_path,
-                service_args=["--log", "error"]
-            )
+            # Locally, use log file for debugging
+            log_path = os.path.join(os.path.dirname(__file__), "geckodriver.log")
+            geckodriver_path = find_geckodriver()
+            if geckodriver_path:
+                service = FirefoxService(
+                    executable_path=geckodriver_path,
+                    log_output=log_path,
+                    service_args=["--log", "error"]
+                )
+            else:
+                service = FirefoxService(
+                    log_output=log_path,
+                    service_args=["--log", "error"]
+                )
         
         # Retry logic for Firefox startup
         max_retries = 3
@@ -192,19 +167,18 @@ class TestSmokeTest:
                 if attempt == max_retries - 1:
                     # Print diagnostic info
                     print("\nDiagnostic information:")
-                    print(f"Firefox binary: {firefox_path}")
-                    print(f"Geckodriver: {geckodriver_path}")
-                    print(f"Log file: {log_path}")
-                    if os.path.exists(log_path):
+                    print(f"Firefox path: {shutil.which('firefox')}")
+                    print(f"Geckodriver path: {shutil.which('geckodriver')}")
+                    if os.getenv("GITHUB_ACTIONS") != "true" and os.path.exists(log_path):
                         with open(log_path, 'r') as f:
-                            print(f"Last few lines of geckodriver.log:")
+                            print("Last few lines of geckodriver.log:")
                             lines = f.readlines()[-10:]
                             for line in lines:
                                 print(f"  {line.strip()}")
                     raise
                 time.sleep(3)
         
-        # Set window size with try/except
+        # Set window size
         try:
             self.driver.set_window_size(1200, 800)
             print("Window size set to 1200x800")
@@ -592,4 +566,13 @@ class TestSmokeTest:
                     break
 
         assert error_found, "No error message displayed for invalid login"
-        print("Admin login test completed successfully")
+        print("Admin login test completed successfully")# Navigate to your project
+cd C:\Users\DELL\Desktop\cse270-v16
+
+# Replace the test file
+notepad tests/test_smokeTest.py
+# Copy and paste the entire code above, save and close
+
+# Replace the workflow file
+notepad .github/workflows/main.yml
+# Copy and paste the entire workflow code above, save and close
