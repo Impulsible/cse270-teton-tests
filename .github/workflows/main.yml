@@ -22,15 +22,60 @@ jobs:
       run: |
         pip install pytest selenium
         
-    - name: Install Chrome and ChromeDriver
-      uses: nanasess/setup-chromedriver@v2
-      with:
-        chromedriver-version: '114.0.5735.90'  # This version is known to work
-    
+    - name: Install Chrome
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y google-chrome-stable
+        
+    - name: Get Chrome version
+      id: chrome-version
+      run: |
+        CHROME_VERSION=$(google-chrome --version | awk '{print $3}')
+        CHROME_MAJOR_VERSION=$(echo $CHROME_VERSION | cut -d'.' -f1)
+        echo "Chrome version: $CHROME_VERSION"
+        echo "Major version: $CHROME_MAJOR_VERSION"
+        echo "chrome_version=$CHROME_VERSION" >> $GITHUB_OUTPUT
+        echo "chrome_major_version=$CHROME_MAJOR_VERSION" >> $GITHUB_OUTPUT
+        
+    - name: Install matching ChromeDriver
+      run: |
+        sudo apt-get install -y unzip
+        CHROME_MAJOR_VERSION=$(google-chrome --version | awk '{print $3}' | cut -d'.' -f1)
+        echo "Installing ChromeDriver for Chrome $CHROME_MAJOR_VERSION"
+        
+        # Delete any existing ChromeDriver
+        sudo rm -f /usr/local/bin/chromedriver
+        
+        # Get the exact ChromeDriver version that matches Chrome
+        if [ "$CHROME_MAJOR_VERSION" = "144" ]; then
+          # Specific version for Chrome 144
+          CHROMEDRIVER_VERSION="144.0.7559.133"
+        else
+          # Try to get the matching version
+          CHROMEDRIVER_VERSION=$(curl -s "https://chromedriver.storage.googleapis.com/LATEST_RELEASE_$CHROME_MAJOR_VERSION")
+        fi
+        
+        echo "Downloading ChromeDriver version: $CHROMEDRIVER_VERSION"
+        wget -q "https://chromedriver.storage.googleapis.com/$CHROMEDRIVER_VERSION/chromedriver_linux64.zip"
+        unzip -q chromedriver_linux64.zip
+        sudo mv chromedriver /usr/local/bin/
+        sudo chmod +x /usr/local/bin/chromedriver
+        
+    - name: Verify installations
+      run: |
+        echo "Chrome version:"
+        google-chrome --version
+        echo "ChromeDriver version:"
+        chromedriver --version
+        
     - name: Start HTTP Server
       run: |
         python -m http.server 5500 &
         sleep 5
+        
+    - name: Test server connection
+      run: |
+        curl -I http://localhost:5500/cse270/teton/1.6/ || echo "Server check failed"
         
     - name: Run tests
       run: |
